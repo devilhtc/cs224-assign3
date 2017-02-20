@@ -150,7 +150,7 @@ class RNNModel(NERModel):
         (Don't change the variable names)
         """
         ### YOUR CODE HERE (~4-6 lines)
-        self.input_placeholder=tf.placeholder(tf.int32,[None,self.max_length,n_features])
+        self.input_placeholder=tf.placeholder(tf.int32,[None,self.max_length,self.config.n_features])
         self.labels_placeholder=tf.placeholder(tf.int32,[None, self.max_length])
         self.mask_placeholder=tf.placeholder(tf.bool,[None,self.max_length])
         self.dropout_placeholder=tf.placeholder(tf.float32)
@@ -180,8 +180,8 @@ class RNNModel(NERModel):
         """
         ### YOUR CODE (~6-10 lines)
         feed_dict={
-            self.input_placeholder:inputs_batch
-            self.mask_placeholder:mask_batch
+            self.input_placeholder:inputs_batch,
+            self.mask_placeholder:mask_batch,
             self.dropout_placeholder:dropout
         }
         if labels_batch!=None:
@@ -273,16 +273,32 @@ class RNNModel(NERModel):
         # Define U and b2 as variables.
         # Initialize state as vector of zeros.
         ### YOUR CODE HERE (~4-6 lines)
+        U=tf.get_variable("U",shape=[self.config.hidden_size,self.config.n_classes],dtype=tf.float32,initializer=tf.contrib.layers.xavier_initializer())
+        b_2=tf.get_variable("b2",initializer=tf.zeros([self.config.n_classes,],tf.float32))
+        batch_now=tf.shape(x)[0]
+        h_0=tf.zeros([batch_now,self.config.hidden_size],tf.float32)
         ### END YOUR CODE
 
         with tf.variable_scope("RNN"):
             for time_step in range(self.max_length):
                 ### YOUR CODE HERE (~6-10 lines)
-                pass
+                x_t=x[:,time_step,:]
+                if time_step>0:
+                    tf.get_variable_scope().reuse_variables()
+                    h_prev=h_t
+                else:
+                    h_prev=h_0
+                print time_step
+                o_t, h_t = cell(x_t, h_prev, scope="RNN")
+                o_drop_t = tf.nn.dropout(o_t, dropout_rate)
+                y_t = tf.matmul(o_drop_t, U )+ b_2
+                preds.append(y_t)
+
                 ### END YOUR CODE
 
         # Make sure to reshape @preds here.
         ### YOUR CODE HERE (~2-4 lines)
+        preds=tf.reshape(tf.pack(preds),[-1,self.max_length,self.config.n_classes])
         ### END YOUR CODE
 
         assert preds.get_shape().as_list() == [None, self.max_length, self.config.n_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.max_length, self.config.n_classes], preds.get_shape().as_list())
@@ -304,7 +320,7 @@ class RNNModel(NERModel):
             loss: A 0-d tensor (scalar)
         """
         ### YOUR CODE HERE (~2-4 lines)
-        loss=tf.reduce_mean(tf.boolean_mask(tf.nn.sparse_softmax_cross_entropy_with_logits(pred,self.labels_placeholder),self.mask_placeholder))
+        loss=tf.reduce_mean(tf.boolean_mask(tf.nn.sparse_softmax_cross_entropy_with_logits(preds,self.labels_placeholder),self.mask_placeholder))
         ### END YOUR CODE
         return loss
 
