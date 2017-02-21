@@ -288,7 +288,7 @@ class RNNModel(NERModel):
                     h_prev=h_t
                 else:
                     h_prev=h_0
-                print time_step
+                #print time_step
                 o_t, h_t = cell(x_t, h_prev, scope="RNN")
                 o_drop_t = tf.nn.dropout(o_t, dropout_rate)
                 y_t = tf.matmul(o_drop_t, U )+ b_2
